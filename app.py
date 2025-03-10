@@ -245,6 +245,10 @@ def oauth_redirect():
         return "Bot installed successfully!"
     return "Installation failed."
 
+@flask_app.route("/slack/events", methods=["POST"])
+def slack_events():
+    return handler.handle(request)
+
 
 # @app.message("hello")
 # async def message_hello(message, say):
@@ -259,11 +263,10 @@ def oauth_redirect():
 #     # Send the LLM response (extract text from CompletionResponse)
 #     await say(str(response))
 
-@flask_app.route("/slack/events", methods=["POST"])
-def slack_events():
-    return handler.handle(request)
 
-if __name__ == "__main__":
-    # SocketModeHandler(app, SLACK_APP_TOKEN).start()
-    flask_app.run(port=int(os.getenv("PORT",3000)))
-    # app.start(port=int(os.getenv("PORT",3000)))
+
+# if __name__ == "__main__":
+#     # SocketModeHandler(app, SLACK_APP_TOKEN).start()
+#     flask_app.run(port=os.getenv("PORT",3000))
+#     # app.start(port=int(os.getenv("PORT",3000)))
+app = flask_app
