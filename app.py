@@ -21,6 +21,7 @@ from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_sdk.oauth.installation_store import FileInstallationStore
 from slack_sdk.oauth.state_store import FileOAuthStateStore
 from slack_sdk.oauth import AuthorizeUrlGenerator
+import html
 
 # from llama_index.core.llms import ChatMessage
 
