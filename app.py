@@ -237,7 +237,7 @@ def handle_app_mention_events(body, logger):
 @flask_app.route("/slack/oauth_redirect", methods=["GET"])
 def oauth_redirect():
     code = request.args.get("code")
-    client = app.client
+    client = bolt_app.client
     response = client.oauth_v2_access(
         client_id=os.getenv("SLACK_CLIENT_ID"),
         client_secret=os.getenv("SLACK_CLIENT_SECRET"),
