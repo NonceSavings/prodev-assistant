@@ -1,0 +1,7 @@
+slack_bolt
+llama_index
+llama_index.llms.ollama
+pydantic[email]
+llama_index.llms.gemini
+python-dotenv
+supabase
