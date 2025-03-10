@@ -259,11 +259,13 @@ def handle_app_mention_events(body, logger):
         return
     
     # Find the installation for this team
-    installation = bolt_app.oauth_settings.installation_store.find_installation(
-        enterprise_id=body.get("enterprise_id"),
-        team_id=team_id,
-        is_enterprise_install=body.get("is_enterprise_install", False)
+    installation_store = FileInstallationStore(base_dir="./data/installations")
+    installation = installation_store.find_installation(
+            enterprise_id=None,
+            team_id=team_id,
+            is_enterprise_install=False
     )
+    # installation_store.find
     
     if not installation:
         logger.error(f"No installation found for team: {team_id}")
