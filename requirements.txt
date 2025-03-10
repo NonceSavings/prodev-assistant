@@ -5,3 +5,4 @@ pydantic[email]
 llama_index.llms.gemini
 python-dotenv
 supabase
+flask

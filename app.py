@@ -15,6 +15,8 @@ import ollama
 from dotenv import load_dotenv
 from typing import Optional
 from supabase import create_client
+from flask import Flask , request
+from slack_bolt.adapter.flask import SlackRequestHandler
 # from llama_index.core.llms import ChatMessage
 
 # Initializes your app with your bot token and socket mode handler
@@ -25,6 +27,9 @@ SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
 SIGNING_SECRET=os.getenv("SIGNING_SECRET")
 
 app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
+
+flask_app = Flask(__name__)
+handler = SlackRequestHandler(app)
 
 SUPABASE_URL=os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY=os.getenv("SUPABASE_SERVICE_KEY")
@@ -224,6 +229,22 @@ def handle_app_mention_events(body, logger):
             thread_ts=event.get("ts")
         )
 
+@flask_app.route("/slack/oauth_redirect", methods=["GET"])
+def oauth_redirect():
+    code = request.args.get("code")
+    client = app.client
+    response = client.oauth_v2_access(
+        client_id=os.environ.get("SLACK_CLIENT_ID"),
+        client_secret=os.environ.get("SLACK_CLIENT_SECRET"),
+        code=code,
+        redirect_uri=os.environ.get("SLACK_REDIRECT_URI")
+    )
+    if response["ok"]:
+        # Store the bot token securely (e.g., in a database) for this workspace
+        print("Installed successfully:", response["access_token"])
+        return "Bot installed successfully!"
+    return "Installation failed."
+
 
 # @app.message("hello")
 # async def message_hello(message, say):
@@ -238,6 +259,11 @@ def handle_app_mention_events(body, logger):
 #     # Send the LLM response (extract text from CompletionResponse)
 #     await say(str(response))
 
+@flask_app.route("/slack/events", methods=["POST"])
+def slack_events():
+    return handler.handle(request)
+
 if __name__ == "__main__":
     # SocketModeHandler(app, SLACK_APP_TOKEN).start()
-    app.start(port=int(os.getenv("PORT",3000)))
+    flask_app.run(port=int(os.getenv("PORT",3000)))
+    # app.start(port=int(os.getenv("PORT",3000)))
