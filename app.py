@@ -33,7 +33,7 @@ SIGNING_SECRET=os.getenv("SIGNING_SECRET")
 bolt_app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
 
 flask_app = Flask(__name__)
-handler = SlackRequestHandler(app)
+handler = SlackRequestHandler(bolt_app)
 
 
 
