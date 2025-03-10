@@ -17,6 +17,10 @@ from typing import Optional
 from supabase import create_client
 from flask import Flask , request
 from slack_bolt.adapter.flask import SlackRequestHandler
+from slack_bolt.oauth.oauth_settings import OAuthSettings
+from slack_sdk.oauth.installation_store import FileInstallationStore
+from slack_sdk.oauth.state_store import FileOAuthStateStore
+from slack_sdk.oauth import AuthorizeUrlGenerator
 
 # from llama_index.core.llms import ChatMessage
 
@@ -28,13 +32,35 @@ SUPABASE_URL=os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY=os.getenv("SUPABASE_SERVICE_KEY")
 GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 SLACK_APP_TOKEN=os.getenv("SLACK_APP_TOKEN")
-SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
+# SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
 SIGNING_SECRET=os.getenv("SIGNING_SECRET")
 SLACK_CLIENT_ID=os.getenv("SLACK_CLIENT_ID")
 SLACK_REDIRECT_URI=os.getenv("SLACK_REDIRECT_URL")
+SLACK_CLIENT_SECRET=os.getenv("SLACK_CLIENT_SECRET")
 
+oauth_settings = OAuthSettings(
+    client_id=SLACK_CLIENT_ID,
+    client_secret=SLACK_CLIENT_SECRET,
+    scopes=["channels:history", "chat:write", "commands", "reactions:read"],
+    installation_store=FileInstallationStore(base_dir="./data/installations"),
+    state_store=FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states"),
+    install_path="/slack/install",
+    redirect_uri_path="/slack/oauth_redirect",
+)
 
-bolt_app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
+state_store = FileOAuthStateStore(expiration_seconds=300, base_dir="./data")
+
+authorize_url_generator = AuthorizeUrlGenerator(
+    client_id=os.environ["SLACK_CLIENT_ID"],
+    scopes=["app_mentions:read", "chat:write"],
+    user_scopes=["search:read"],
+)
+#  user_scopes=[],
+#     redirect_uri=SLACK_REDIRECT_URI,
+#     install_path="/slack/install",
+#     redirect_uri_path="/slack/oauth_redirect",
+
+bolt_app = App(signing_secret=SIGNING_SECRET,oauth_settings=oauth_settings)
 
 flask_app = Flask(__name__)
 handler = SlackRequestHandler(bolt_app)
@@ -234,35 +260,29 @@ def handle_app_mention_events(body, logger):
             thread_ts=event.get("ts")
         )
 
-@flask_app.route("/slack/oauth_redirect", methods=["GET"])
-def oauth_redirect():
-    code = request.args.get("code")
-    client = bolt_app.client
-    response = client.oauth_v2_access(
-        client_id=os.getenv("SLACK_CLIENT_ID"),
-        client_secret=os.getenv("SLACK_CLIENT_SECRET"),
-        code=code,
-        redirect_uri=os.getenv("SLACK_REDIRECT_URI")
-    )
-    if response["ok"]:
-        # Store the bot token securely (e.g., in a database) for this workspace
-        print("Installed successfully:", response["access_token"])
-        return "Bot installed successfully!"
-    return "Installation failed."
-
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
     return handler.handle(request)
 
-
 @flask_app.route("/slack/install", methods=["GET"])
 def install():
-    return '<a href="https://slack.com/oauth/v2/authorize?client_id={}&scope=app_mentions:read,chat:write&redirect_uri={}"><img alt="Add to Slack" src="https://platform.slack-edge.com/img/add_to_slack.png"></a>'.format(
-        SLACK_CLIENT_ID, SLACK_REDIRECT_URI
-    )
+    state = state_store.issue()
+    # https://slack.com/oauth/v2/authorize?state=(generated value)&client_id={client_id}&scope=app_mentions:read,chat:write&user_scope=search:read
+    url = authorize_url_generator.generate(state)
+    return f'<a href="{html.escape(url)}">' \
+           f'<img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>'
+
+@flask_app.route("/slack/oauth_redirect", methods=["GET"])
+def oauth_redirect():
+    return handler.handle(request)
+
+# Simple home page
+@flask_app.route("/", methods=["GET"])
+def home():
+    return "Slack Bot is running! <a href='/slack/install'>Install this bot</a>"
 
 # if __name__ == "__main__":
-#     # SocketModeHandler(app, SLACK_APP_TOKEN).start()
-#     flask_app.run(port=os.getenv("PORT",3000))
+    # SocketModeHandler(app, SLACK_APP_TOKEN).start()
+    # flask_app.run(port=os.getenv("PORT",3000))
 #     # app.start(port=int(os.getenv("PORT",3000)))
 app = flask_app
