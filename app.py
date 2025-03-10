@@ -267,11 +267,12 @@ def slack_events():
 
 @flask_app.route("/slack/install", methods=["GET"])
 def install():
-    state = state_store.issue()
-    # https://slack.com/oauth/v2/authorize?state=(generated value)&client_id={client_id}&scope=app_mentions:read,chat:write&user_scope=search:read
-    url = authorize_url_generator.generate(state)
-    return f'<a href="{html.escape(url)}">' \
-           f'<img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>'
+    # state = state_store.issue()
+    # # https://slack.com/oauth/v2/authorize?state=(generated value)&client_id={client_id}&scope=app_mentions:read,chat:write&user_scope=search:read
+    # url = authorize_url_generator.generate(state)
+    # return f'<a href="{html.escape(url)}">' \
+    #        f'<img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>'
+    return handler.handle(request)
 
 @flask_app.route("/slack/oauth_redirect", methods=["GET"])
 def oauth_redirect():
