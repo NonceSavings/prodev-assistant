@@ -251,21 +251,25 @@ def handle_app_mention_events(body, logger):
     user = event["user"]
     text = event["text"]
 
-    import re
-    mention_pattern = re.compile(r'<@([A-Z0-9]+)>')
-    match = mention_pattern.search(text)
-    if match:
-        bot_user_id = match.group(1)
-        text = text.replace(f"<@{bot_user_id}>", "").strip()
-    else:
-        # Fallback if we can't extract the ID
-        text = text.strip()
+    team_id = body["team_id"]
+    installation = bolt_app.oauth_settings.installation_store.find_installation(
+        enterprise_id=None,
+        team_id=team_id,
+        is_enterprise_install=False
+    )
+    
+    if installation:
+        bot_token = installation.bot_token
+        # Create a client with the token
+        from slack_sdk import WebClient
+        client = WebClient(token=bot_token)
+        bot_user_id = client.auth_test()["user_id"]
 
-    
-    # Strip the bot's user ID from the text
-    # bot_user_id = bolt_app.client.auth_test()["user_id"]
-    # text = text.replace(f"<@{bot_user_id}>", "").strip()
-    
+
+        # Strip the bot's user ID from the text
+        bot_user_id = bolt_app.client.auth_test()["user_id"]
+        text = text.replace(f"<@{bot_user_id}>", "").strip()
+            
     try:
         # Get response from Ollama
         # llm_response = query_ollama(text)
