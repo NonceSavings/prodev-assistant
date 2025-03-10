@@ -17,6 +17,7 @@ from typing import Optional
 from supabase import create_client
 from flask import Flask , request
 from slack_bolt.adapter.flask import SlackRequestHandler
+
 # from llama_index.core.llms import ChatMessage
 
 # Initializes your app with your bot token and socket mode handler
@@ -29,6 +30,9 @@ GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 SLACK_APP_TOKEN=os.getenv("SLACK_APP_TOKEN")
 SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
 SIGNING_SECRET=os.getenv("SIGNING_SECRET")
+SLACK_CLIENT_ID=os.getenv("SLACK_CLIENT_ID")
+SLACK_REDIRECT_URI=os.getenv("SLACK_REDIRECT_URL")
+
 
 bolt_app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
 
@@ -235,10 +239,10 @@ def oauth_redirect():
     code = request.args.get("code")
     client = app.client
     response = client.oauth_v2_access(
-        client_id=os.environ.get("SLACK_CLIENT_ID"),
-        client_secret=os.environ.get("SLACK_CLIENT_SECRET"),
+        client_id=os.getenv("SLACK_CLIENT_ID"),
+        client_secret=os.getenv("SLACK_CLIENT_SECRET"),
         code=code,
-        redirect_uri=os.environ.get("SLACK_REDIRECT_URI")
+        redirect_uri=os.getenv("SLACK_REDIRECT_URI")
     )
     if response["ok"]:
         # Store the bot token securely (e.g., in a database) for this workspace
@@ -249,6 +253,13 @@ def oauth_redirect():
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
     return handler.handle(request)
+
+
+@flask_app.route("/slack/install", methods=["GET"])
+def install():
+    return '<a href="https://slack.com/oauth/v2/authorize?client_id={}&scope=app_mentions:read,chat:write&redirect_uri={}"><img alt="Add to Slack" src="https://platform.slack-edge.com/img/add_to_slack.png"></a>'.format(
+        SLACK_CLIENT_ID, SLACK_REDIRECT_URI
+    )
 
 # if __name__ == "__main__":
 #     # SocketModeHandler(app, SLACK_APP_TOKEN).start()
