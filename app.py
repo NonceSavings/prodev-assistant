@@ -22,6 +22,7 @@ from slack_sdk.oauth.installation_store import FileInstallationStore
 from slack_sdk.oauth.state_store import FileOAuthStateStore
 from slack_sdk.oauth import AuthorizeUrlGenerator
 import html
+from slack_sdk import WebClient
 
 # from llama_index.core.llms import ChatMessage
 
@@ -42,7 +43,7 @@ SLACK_CLIENT_SECRET=os.getenv("SLACK_CLIENT_SECRET")
 oauth_settings = OAuthSettings(
     client_id=SLACK_CLIENT_ID,
     client_secret=SLACK_CLIENT_SECRET,
-   scopes=[
+    scopes=[
         "app_mentions:read",
         "assistant:write",
         "bookmarks:read",
@@ -250,38 +251,50 @@ def handle_app_mention_events(body, logger):
     channel_id = event["channel"]
     user = event["user"]
     text = event["text"]
-
-    team_id = body["team_id"]
+    
+    # Get the installation for this team
+    team_id = body.get("team_id")
+    if not team_id:
+        logger.error("No team_id found in request body")
+        return
+    
+    # Find the installation for this team
     installation = bolt_app.oauth_settings.installation_store.find_installation(
-        enterprise_id=None,
+        enterprise_id=body.get("enterprise_id"),
         team_id=team_id,
-        is_enterprise_install=False
+        is_enterprise_install=body.get("is_enterprise_install", False)
     )
     
-    if installation:
-        bot_token = installation.bot_token
-        # Create a client with the token
-        from slack_sdk import WebClient
-        client = WebClient(token=bot_token)
-        bot_user_id = client.auth_test()["user_id"]
+    if not installation:
+        logger.error(f"No installation found for team: {team_id}")
+        return
 
-
-        # Strip the bot's user ID from the text
-        bot_user_id = bolt_app.client.auth_test()["user_id"]
+    import re
+    mention_pattern = re.compile(r'<@([A-Z0-9]+)>')
+    match = mention_pattern.search(text)
+    if match:
+        bot_user_id = match.group(1)
         text = text.replace(f"<@{bot_user_id}>", "").strip()
-            
+
     try:
         # Get response from Ollama
         # llm_response = query_ollama(text)
         
         llm_response = query_gemini(text)
-        
-        # Send the LLM's response back to Slack
-        bolt_app.client.chat_postMessage(
+
+       
+        client = WebClient(token=installation.bot_token)
+        client.chat_postMessage(
             channel=channel_id,
-            text=llm_response,
-            # thread_ts=event.get("ts")
+            text=llm_response
         )
+        
+        # # Send the LLM's response back to Slack
+        # bolt_app.client.chat_postMessage(
+        #     channel=channel_id,
+        #     text=llm_response,
+        #     # thread_ts=event.get("ts")
+        # )
     except Exception as e:
         logger.error(f"Error handling mention: {e}")
         bolt_app.client.chat_postMessage(

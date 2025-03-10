@@ -7,3 +7,4 @@ python-dotenv
 supabase
 flask
 gunicorn
+slack_sdk
