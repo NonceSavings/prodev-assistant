@@ -251,10 +251,20 @@ def handle_app_mention_events(body, logger):
     user = event["user"]
     text = event["text"]
 
+    import re
+    mention_pattern = re.compile(r'<@([A-Z0-9]+)>')
+    match = mention_pattern.search(text)
+    if match:
+        bot_user_id = match.group(1)
+        text = text.replace(f"<@{bot_user_id}>", "").strip()
+    else:
+        # Fallback if we can't extract the ID
+        text = text.strip()
+
     
     # Strip the bot's user ID from the text
-    bot_user_id = bolt_app.client.auth_test()["user_id"]
-    text = text.replace(f"<@{bot_user_id}>", "").strip()
+    # bot_user_id = bolt_app.client.auth_test()["user_id"]
+    # text = text.replace(f"<@{bot_user_id}>", "").strip()
     
     try:
         # Get response from Ollama
