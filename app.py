@@ -42,7 +42,7 @@ SLACK_CLIENT_SECRET=os.getenv("SLACK_CLIENT_SECRET")
 oauth_settings = OAuthSettings(
     client_id=SLACK_CLIENT_ID,
     client_secret=SLACK_CLIENT_SECRET,
-    scopes=["channels:history", "chat:write", "commands", "reactions:read"],
+    scopes=["channels:history", "chat:write", "commands", "reactions:read","app_mentions"],
     installation_store=FileInstallationStore(base_dir="./data/installations"),
     state_store=FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states"),
     install_path="/slack/install",
@@ -61,7 +61,11 @@ authorize_url_generator = AuthorizeUrlGenerator(
 #     install_path="/slack/install",
 #     redirect_uri_path="/slack/oauth_redirect",
 
-bolt_app = App(signing_secret=SIGNING_SECRET,oauth_settings=oauth_settings)
+bolt_app = App(
+    signing_secret=SIGNING_SECRET,
+    oauth_settings=oauth_settings,
+    token_verification_enabled=False
+    )
 
 flask_app = Flask(__name__)
 handler = SlackRequestHandler(bolt_app)
@@ -216,7 +220,7 @@ def handle_message_events(body, logger):
         # llm_response = query_ollama(text)
         
         # Send the LLM's response back to Slack
-        app.client.chat_update(
+        bolt_app.client.chat_update(
             channel=channel_id,
             ts=app.client.chat_postMessage(
                 channel=channel_id,
@@ -245,6 +249,7 @@ def handle_app_mention_events(body, logger):
     try:
         # Get response from Ollama
         # llm_response = query_ollama(text)
+        
         llm_response = query_gemini(text)
         
         # Send the LLM's response back to Slack
