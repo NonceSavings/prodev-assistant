@@ -23,18 +23,19 @@ from slack_bolt.adapter.flask import SlackRequestHandler
 # app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 load_dotenv()
 
-SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
-SIGNING_SECRET=os.getenv("SIGNING_SECRET")
-
-app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
-
-flask_app = Flask(__name__)
-handler = SlackRequestHandler(app)
-
 SUPABASE_URL=os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY=os.getenv("SUPABASE_SERVICE_KEY")
 GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 SLACK_APP_TOKEN=os.getenv("SLACK_APP_TOKEN")
+SLACK_BOT_TOKEN=os.getenv("SLACK_BOT_TOKEN")
+SIGNING_SECRET=os.getenv("SIGNING_SECRET")
+
+bolt_app = App(token=SLACK_BOT_TOKEN,signing_secret=SIGNING_SECRET)
+
+flask_app = Flask(__name__)
+handler = SlackRequestHandler(app)
+
+
 
 
 llm = Gemini(
@@ -161,7 +162,7 @@ def query_ollama(prompt, model="mistral"):
         return f"Failed to communicate with Ollama: {str(e)}"
 
 
-@app.event("message")
+@bolt_app.event("message")
 def handle_message_events(body, logger):
     # Only respond to messages in DMs with the bot
     if body["event"].get("channel_type") == "im":
@@ -170,7 +171,7 @@ def handle_message_events(body, logger):
         channel_id = body["event"]["channel"]
         
         # Acknowledge receipt with a typing indicator
-        app.client.chat_postMessage(
+        bolt_app.client.chat_postMessage(
             channel=channel_id,
             text="Thinking...",
             # thread_ts=body["event"].get("ts")
@@ -195,7 +196,7 @@ def handle_message_events(body, logger):
         )
 
 # Make sure your event handler has the exact signature expected by Slack Bolt
-@app.event("app_mention")
+@bolt_app.event("app_mention")
 def handle_app_mention_events(body, logger):
     logger.info(body)
     
@@ -207,7 +208,7 @@ def handle_app_mention_events(body, logger):
 
     
     # Strip the bot's user ID from the text
-    bot_user_id = app.client.auth_test()["user_id"]
+    bot_user_id = bolt_app.client.auth_test()["user_id"]
     text = text.replace(f"<@{bot_user_id}>", "").strip()
     
     try:
@@ -216,14 +217,14 @@ def handle_app_mention_events(body, logger):
         llm_response = query_gemini(text)
         
         # Send the LLM's response back to Slack
-        app.client.chat_postMessage(
+        bolt_app.client.chat_postMessage(
             channel=channel_id,
             text=llm_response,
             # thread_ts=event.get("ts")
         )
     except Exception as e:
         logger.error(f"Error handling mention: {e}")
-        app.client.chat_postMessage(
+        bolt_app.client.chat_postMessage(
             channel=channel_id,
             text=f"Sorry, I encountered an error: {str(e)}",
             thread_ts=event.get("ts")
@@ -248,22 +249,6 @@ def oauth_redirect():
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
     return handler.handle(request)
-
-
-# @app.message("hello")
-# async def message_hello(message, say):
-   
-#     # say() sends a message to the channel where the event was triggered
-#     await say(f"Hey there <@{user}>! Do you know GOD is the Greatest and The Most Mighty One")
-    
-#     # Get LLM response asynchronously
-#     prompt = "Who is Trump?"  # You can make this dynamic based on message text if desired
-#     response = await llm.acomplete(prompt)  # Use acomplete for async
-    
-#     # Send the LLM response (extract text from CompletionResponse)
-#     await say(str(response))
-
-
 
 # if __name__ == "__main__":
 #     # SocketModeHandler(app, SLACK_APP_TOKEN).start()
