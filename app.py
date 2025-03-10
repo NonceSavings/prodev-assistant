@@ -42,7 +42,17 @@ SLACK_CLIENT_SECRET=os.getenv("SLACK_CLIENT_SECRET")
 oauth_settings = OAuthSettings(
     client_id=SLACK_CLIENT_ID,
     client_secret=SLACK_CLIENT_SECRET,
-    scopes=["channels:history", "chat:write", "commands", "reactions:read","app_mention"],
+   scopes=[
+        "app_mentions:read",
+        "assistant:write",
+        "bookmarks:read",
+        "bookmarks:write",
+        "calls:read",
+        "channels:history",
+        "channels:read", 
+        "chat:write",
+        "groups:history",
+        "im:history"],
     installation_store=FileInstallationStore(base_dir="./data/installations"),
     state_store=FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states"),
     install_path="/slack/install",
