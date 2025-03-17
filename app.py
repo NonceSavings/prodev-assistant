@@ -285,7 +285,9 @@ def handle_app_mention_events(body, logger):
         client = WebClient(token=installation.bot_token)
         client.chat_postMessage(
             channel=channel_id,
-            text=llm_response
+            text=llm_response,
+            username="emekebot",
+            icon_url="https://images.app.goo.gl/R75yk1WiMsQ9wd6Y8"
         )
 
         # client.users_setPhoto()
@@ -301,7 +303,9 @@ def handle_app_mention_events(body, logger):
         bolt_app.client.chat_postMessage(
             channel=channel_id,
             text=f"Sorry, I encountered an error: {str(e)}",
-            thread_ts=event.get("ts")
+            thread_ts=event.get("ts"),
+            
+
         )
 
 def download_image(url, save_path="temp_image.jpg"):
