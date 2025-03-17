@@ -53,7 +53,9 @@ oauth_settings = OAuthSettings(
         "channels:read", 
         "chat:write",
         "groups:history",
-        "im:history"],
+        "im:history",
+        "chat:write.customize"
+        ],
     installation_store=FileInstallationStore(base_dir="./data/installations"),
     state_store=FileOAuthStateStore(expiration_seconds=900, base_dir="./data/states"),
     install_path="/slack/install",
