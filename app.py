@@ -287,7 +287,7 @@ def handle_app_mention_events(body, logger):
             channel=channel_id,
             text=llm_response,
             username="emekebot",
-            icon_url="https://images.app.goo.gl/R75yk1WiMsQ9wd6Y8"
+            icon_emoji=":robot_face:" 
         )
 
         # client.users_setPhoto()
