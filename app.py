@@ -315,7 +315,19 @@ def download_image(url, save_path="temp_image.jpg"):
 
 # Function to change the bot's profile name
 def set_bot_name(new_name):
+    installation_store = FileInstallationStore(base_dir="./data/installations")
+    installation = installation_store.find_installation(
+            enterprise_id=None,
+            team_id=team_id,
+            is_enterprise_install=False
+    )
+    # installation_store.find
+    
+    if not installation:
+        logger.error(f"No installation found for team: {team_id}")
+        return
     try:
+        client = WebClient(token=installation.bot_token)
         client.users_profile_set(
             profile={"first_name": new_name}
         )
@@ -324,7 +336,19 @@ def set_bot_name(new_name):
         return f"Error setting name: {e.response['error']}"
 
 def set_bot_image(image_path):
+    installation_store = FileInstallationStore(base_dir="./data/installations")
+    installation = installation_store.find_installation(
+            enterprise_id=None,
+            team_id=team_id,
+            is_enterprise_install=False
+    )
+    # installation_store.find
+    
+    if not installation:
+        logger.error(f"No installation found for team: {team_id}")
+        return
     try:
+        client = WebClient(token=installation.bot_token)
         client.users_setPhoto(image=image_path)
         return True
     except SlackApiError as e:
@@ -333,7 +357,7 @@ def set_bot_image(image_path):
         if os.path.exists(image_path):
             os.remove(image_path)
 
-@app.command("/update-bot")
+@bolt_app.command("/update-bot")
 def handle_update_bot(ack, body, say):
     # Acknowledge the command immediately
     ack()
@@ -356,6 +380,21 @@ def handle_update_bot(ack, body, say):
     name_result = set_bot_name(new_name)
     if name_result is not True:
         say(name_result)
+        return
+
+    installation_store = FileInstallationStore(base_dir="./data/installations")
+    installation = installation_store.find_installation(
+            enterprise_id=None,
+            team_id=team_id,
+            is_enterprise_install=False
+    )
+    if not installation:
+        logger.error(f"No installation found for team: {team_id}")
+        return
+    # installation_store.find
+    
+    if not installation:
+        logger.error(f"No installation found for team: {team_id}")
         return
 
     # Download and update the bot's image
