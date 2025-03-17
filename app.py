@@ -55,7 +55,7 @@ oauth_settings = OAuthSettings(
         "groups:history",
         "im:history"],
     installation_store=FileInstallationStore(base_dir="./data/installations"),
-    state_store=FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states"),
+    state_store=FileOAuthStateStore(expiration_seconds=900, base_dir="./data/states"),
     install_path="/slack/install",
     redirect_uri_path="/slack/oauth_redirect",
 )
@@ -80,9 +80,6 @@ bolt_app = App(
 
 flask_app = Flask(__name__)
 handler = SlackRequestHandler(bolt_app)
-
-
-
 
 llm = Gemini(
     model="models/gemini-1.5-flash",
@@ -174,7 +171,7 @@ agent = ReActAgent.from_tools(
 
 def query_gemini(prompt):
     """
-    Sends a prompt to ollama and get a response
+    Sends a prompt to gemini and get a response
     """
     try:
         # response = llm.complete(prompt)
@@ -290,6 +287,8 @@ def handle_app_mention_events(body, logger):
             channel=channel_id,
             text=llm_response
         )
+
+        # client.users_setPhoto()
         
         # # Send the LLM's response back to Slack
         # bolt_app.client.chat_postMessage(
@@ -304,6 +303,71 @@ def handle_app_mention_events(body, logger):
             text=f"Sorry, I encountered an error: {str(e)}",
             thread_ts=event.get("ts")
         )
+
+def download_image(url, save_path="temp_image.jpg"):
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
+        return save_path
+    else:
+        raise Exception(f"Failed to download image from {url}")
+
+# Function to change the bot's profile name
+def set_bot_name(new_name):
+    try:
+        client.users_profile_set(
+            profile={"first_name": new_name}
+        )
+        return True
+    except SlackApiError as e:
+        return f"Error setting name: {e.response['error']}"
+
+def set_bot_image(image_path):
+    try:
+        client.users_setPhoto(image=image_path)
+        return True
+    except SlackApiError as e:
+        return f"Error setting image: {e.response['error']}"
+    finally:
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+@app.command("/update-bot")
+def handle_update_bot(ack, body, say):
+    # Acknowledge the command immediately
+    ack()
+
+    # Get the command text (e.g., "NewName https://example.com/image.jpg")
+    command_text = body.get("text", "").strip()
+    if not command_text:
+        say("Please provide a name and image URL, e.g., `/update-bot NewName https://example.com/image.jpg`")
+        return
+
+    # Split the text into name and URL
+    parts = command_text.split(" ", 1)
+    if len(parts) != 2:
+        say("Invalid format. Use: `/update-bot [name] [image-url]`")
+        return
+
+    new_name, image_url = parts
+
+    # Update the bot's name
+    name_result = set_bot_name(new_name)
+    if name_result is not True:
+        say(name_result)
+        return
+
+    # Download and update the bot's image
+    try:
+        image_path = download_image(image_url)
+        image_result = set_bot_image(image_path)
+        if image_result is not True:
+            say(image_result)
+            return
+        say(f"Updated bot to name '{new_name}' with new image!")
+    except Exception as e:
+        say(f"Error processing image: {str(e)}")
 
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
