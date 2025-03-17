@@ -414,6 +414,63 @@ def handle_update_bot(ack, body, say):
     except Exception as e:
         say(f"Error processing image: {str(e)}")
 
+@flask_app.route('/slack/commands/change-profile', methods=['POST'])
+def change_profile():
+    # Get data from the slash command
+    data = request.form
+    text = data.get('text', '')
+    
+    # Parse the command arguments (username and profile_url)
+    args = text.split()
+    if len(args) >= 2:
+        new_username = args[0]
+        new_profile_url = args[1]
+        
+        try:
+            installation_store = FileInstallationStore(base_dir="./data/installations")
+            installation = installation_store.find_installation(
+            enterprise_id=None,
+            team_id=team_id,
+            is_enterprise_install=False
+           )
+            if not installation:
+               logger.error(f"No installation found for team: {team_id}")
+               return
+            # installation_store.find
+    
+            if not installation:
+              logger.error(f"No installation found for team: {team_id}")
+              return
+            # For user tokens only (not bot tokens)
+            # This requires user token with users.profile:write scope
+            # Note: This doesn't work with bot tokens as mentioned earlier
+         
+            # For the specific message posting with custom appearance
+            # This works with bot tokens if you have chat:write.customize scope
+            client = WebClient(token=installation.bot_token)
+            channel_id = data.get('channel_id')
+            client.chat_postMessage(
+                channel=channel_id,
+                text=f"This message appears with my new identity!",
+                username=new_username,
+                icon_url=new_profile_url
+            )
+            return jsonify({
+                    "response_type": "ephemeral",
+                    "text": f"Posted message as {new_username} with custom image!"
+            })
+                
+        except SlackApiError as e:
+            return jsonify({
+                "response_type": "ephemeral",
+                "text": f"Error: {e.response['error']}"
+            })
+    else:
+        return jsonify({
+            "response_type": "ephemeral",
+            "text": "Usage: /change-profile [new_username] [profile_image_url]"
+        })
+
 @flask_app.route("/slack/events", methods=["POST"])
 def slack_events():
     return handler.handle(request)
