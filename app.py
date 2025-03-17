@@ -419,6 +419,8 @@ def change_profile():
     # Get data from the slash command
     data = request.form
     text = data.get('text', '')
+    team_id = data.get('team_id')
+    # team_id = 
     
     # Parse the command arguments (username and profile_url)
     args = text.split()
