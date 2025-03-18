@@ -69,10 +69,6 @@ authorize_url_generator = AuthorizeUrlGenerator(
     scopes=["app_mentions:read", "chat:write"],
     user_scopes=["search:read"],
 )
-#  user_scopes=[],
-#     redirect_uri=SLACK_REDIRECT_URI,
-#     install_path="/slack/install",
-#     redirect_uri_path="/slack/oauth_redirect",
 
 bolt_app = App(
     signing_secret=SIGNING_SECRET,
@@ -264,11 +260,25 @@ def handle_app_mention_events(body, logger):
             team_id=team_id,
             is_enterprise_install=False
     )
-    # installation_store.find
-    
     if not installation:
-        logger.error(f"No installation found for team: {team_id}")
-        return
+       logger.error(f"No installation found for team: {team_id}")
+       return
+    # installation_store.find
+    response = supabase.table("teams").select('*').eq("team_id",team_id).execute()
+    if response.data:
+        user_data = response.data[0]
+        db_username = user_data.get('username')
+        image_url = user_data.get('image_url')
+    
+     # Use custom profile if available
+    if db_username:
+       username = db_username
+            
+            # Use image_url instead of emoji if available
+    if image_url:
+      icon_url = image_url
+      icon_emoji = None  # Clear emoji if we have an image URL
+
 
     import re
     mention_pattern = re.compile(r'<@([A-Z0-9]+)>')
@@ -276,30 +286,31 @@ def handle_app_mention_events(body, logger):
     if match:
         bot_user_id = match.group(1)
         text = text.replace(f"<@{bot_user_id}>", "").strip()
+    
+      # Initialize username and image_url
+    username = "emekebot"  # Default
+    icon_emoji = ":robot_face:"  # Default
 
     try:
         # Get response from Ollama
         # llm_response = query_ollama(text)
         
         llm_response = query_gemini(text)
-
-       
-        client = WebClient(token=installation.bot_token)
-        client.chat_postMessage(
-            channel=channel_id,
-            text=llm_response,
-            username="emekebot",
-            icon_emoji=":robot_face:" 
-        )
-
-        # client.users_setPhoto()
-        
-        # # Send the LLM's response back to Slack
-        # bolt_app.client.chat_postMessage(
-        #     channel=channel_id,
-        #     text=llm_response,
-        #     # thread_ts=event.get("ts")
-        # )
+        if username and image_url:
+            client = WebClient(token=installation.bot_token)
+            client.chat_postMessage(
+              channel=channel_id,
+              text=llm_response,
+              username=username,
+              icon_url=image_url
+          )
+        else:
+            client = WebClient(token=installation.bot_token)
+            client.chat_postMessage(
+              channel=channel_id,
+              text=llm_response,
+            )
+            
     except Exception as e:
         logger.error(f"Error handling mention: {e}")
         bolt_app.client.chat_postMessage(
@@ -457,6 +468,11 @@ def change_profile():
                 username=new_username,
                 icon_url=new_profile_url
             )
+            supabase.table("teams").insert([{
+                "team_id":team_id,
+                "username":new_username,
+                "image_url":new_profile_url
+            }])
             return jsonify({
                     "response_type": "ephemeral",
                     "text": f"Posted message as {new_username} with custom image!"
