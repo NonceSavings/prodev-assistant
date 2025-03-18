@@ -247,6 +247,11 @@ def handle_app_mention_events(body, logger):
     user = event["user"]
     text = event["text"]
     
+    db_username:str
+    image_url:str
+    username:str
+    image_url:str
+    
     # Get the installation for this team
     team_id = body.get("team_id")
     if not team_id:
@@ -310,7 +315,7 @@ def handle_app_mention_events(body, logger):
               channel=channel_id,
               text=llm_response,
             )
-            
+
     except Exception as e:
         logger.error(f"Error handling mention: {e}")
         bolt_app.client.chat_postMessage(
