@@ -473,11 +473,7 @@ def change_profile():
                 "team_id":team_id,
                 "username":new_username,
                 "image_url":new_profile_url
-            }])
-            return jsonify({
-                    "response_type": "ephemeral",
-                    "text": f"Posted message as {new_username} with custom image!"
-            })
+            }]).execute()
                 
         except SlackApiError as e:
             return jsonify({
