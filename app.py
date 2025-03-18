@@ -246,11 +246,11 @@ def handle_app_mention_events(body, logger):
     channel_id = event["channel"]
     user = event["user"]
     text = event["text"]
-    
-    db_username:str
-    image_url:str
-    username:str
-    image_url:str
+
+    db_username = None
+    image_url = None
+    username = None
+    image_url = None
     
     # Get the installation for this team
     team_id = body.get("team_id")
@@ -292,10 +292,6 @@ def handle_app_mention_events(body, logger):
         bot_user_id = match.group(1)
         text = text.replace(f"<@{bot_user_id}>", "").strip()
     
-      # Initialize username and image_url
-    username = "emekebot"  # Default
-    icon_emoji = ":robot_face:"  # Default
-
     try:
         # Get response from Ollama
         # llm_response = query_ollama(text)
